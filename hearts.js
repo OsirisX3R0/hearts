@@ -11,6 +11,7 @@ const confirmButton = document.querySelector(".confirm");
 
 /**
  * @typedef Player
+ * @property {Number} number
  * @property {Number} score
  * @property {String[]} hand
  * @property {Boolean} loser
@@ -88,10 +89,10 @@ const shuffle = (deck) => {
  */
 const deal = (deck) => {
   let players = [
-    { score: 0, hand: [], loser: false },
-    { score: 0, hand: [], loser: false },
-    { score: 0, hand: [], loser: false },
-    { score: 0, hand: [], loser: false },
+    { number: 1, score: 0, hand: [], loser: false },
+    { number: 2, score: 0, hand: [], loser: false },
+    { number: 3, score: 0, hand: [], loser: false },
+    { number: 4, score: 0, hand: [], loser: false },
   ];
   let player = 0;
 
@@ -319,16 +320,24 @@ const game = async () => {
     }
 
     // Get player order
-    const first = [player1, player2, player3, player4].find((player) =>
-      player.hand.includes("2C")
+    const players = [player1, player2, player3, player4];
+    const first = players.find((player) => player.hand.includes("2C"));
+    const second = players.find((player) => player.number === first.number + 1);
+    const third = players.find((player) => player.number === second.number + 1);
+    const fourth = players.find(
+      (player) => player.number === fourth.number + 1
     );
+
+    let turn = 1;
 
     while (
       player1.hand.length &&
       player2.hand.length &&
       player3.hand.length &&
       player4.hand.length
-    ) {}
+    ) {
+      turn += 1;
+    }
 
     loser = [player1, player2, player3, player4].find((p) => p.loser);
   }
