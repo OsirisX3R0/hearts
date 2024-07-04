@@ -318,7 +318,10 @@ const game = async () => {
       default:
     }
 
-    const first = [player1, player2, player3, player4];
+    // Get player order
+    const first = [player1, player2, player3, player4].find((player) =>
+      player.hand.includes("2C")
+    );
 
     while (
       player1.hand.length &&
