@@ -1,0 +1,7 @@
+{
+  "name": "hearts",
+  "version": "1.0.0",
+  "description": "The card game hearts",
+  "main": "index.js",
+  "license": "MIT"
+}
