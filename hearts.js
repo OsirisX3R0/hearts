@@ -223,6 +223,21 @@ const pickThreePlayer1 = (hand) => {
 };
 
 /**
+ * Visually updates Player 1's hand
+ * @param {String[]} hand
+ */
+const updatePlayer1Hand = (hand) => {
+  for (let card of hand) {
+    let { suit } = getRankAndSuit(card);
+    const span = document.createElement("span");
+    span.classList.add("player-card");
+    if (suit === "D" || suit === "H") span.classList.add("red");
+    span.innerHTML = card;
+    player1Hand.appendChild(span);
+  }
+};
+
+/**
  * Pass cards from one hand to another
  * @param {String[]} picks
  * @param {String[]} deck
@@ -232,6 +247,19 @@ const pass = (picks, deck) => {
 
   // return [passedFrom.sort(sortHand), [...to, ...picks].sort(sortHand)];
   return [...deck, ...picks].sort(sortHand);
+};
+
+/**
+ * Finds the next player
+ * @param {Player} player
+ * @param {Player} previousPlayer
+ */
+const nextPlayer = (player, previousPlayer = null) => {
+  if (!previousPlayer) return player.hand.includes("2C");
+
+  return previousPlayer.number < 4
+    ? player.number === previousPlayer.number + 1
+    : player.number === 1;
 };
 
 /** Game logic */
@@ -248,14 +276,7 @@ const game = async () => {
   // console.log(player4);
 
   // Create the card elements for player 1
-  for (let card of player1.hand) {
-    let { suit } = getRankAndSuit(card);
-    const span = document.createElement("span");
-    span.classList.add("player-card");
-    if (suit === "D" || suit === "H") span.classList.add("red");
-    span.innerHTML = card;
-    player1Hand.appendChild(span);
-  }
+  updatePlayer1Hand(player1.hand);
 
   /** @type {Player} */
   let loser;
@@ -319,14 +340,14 @@ const game = async () => {
       default:
     }
 
-    // Get player order
+    updatePlayer1Hand(player1.hand);
+
+    // Get initial player order
     const players = [player1, player2, player3, player4];
-    const first = players.find((player) => player.hand.includes("2C"));
-    const second = players.find((player) => player.number === first.number + 1);
-    const third = players.find((player) => player.number === second.number + 1);
-    const fourth = players.find(
-      (player) => player.number === fourth.number + 1
-    );
+    let first = players.find(nextPlayer);
+    let second = players.find((player) => nextPlayer(player, first));
+    let third = players.find((player) => nextPlayer(player, second));
+    let fourth = players.find((player) => nextPlayer(player, third));
 
     let turn = 1;
 
