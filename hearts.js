@@ -10,13 +10,284 @@ const player1Hand = document.querySelector("#hand");
 const confirmButton = document.querySelector(".confirm");
 
 /**
- * @typedef Player
- * @property {Number} number
- * @property {Number} score
- * @property {String[]} hand
- * @property {Boolean} loser
+ * @typedef PlayersObject
+ * @property {Player} player1
+ * @property {Player} player2
+ * @property {Player} player3
+ * @property {Player} player4
  */
 
+/** A game of Hearts */
+class Game {
+  /** Creates a new instance of the game Hearts */
+  constructor() {
+    // Generate the deck
+    /** @type {Deck} */
+    this.deck = new Deck();
+
+    // Deal to the players
+    /** @type {PlayersObject} */
+    this.players = this.deal(deck);
+  }
+
+  /**
+   * Deals the deck of cards to the players
+   * @param {String[]} deck
+   * @returns {PlayersObject}
+   */
+  deal(deck) {
+    let players = [
+      new Player(1, player1Display, player1Hand),
+      new Player(2, player2Display),
+      new Player(3, player3Display),
+      new Player(4, player4Display),
+    ];
+    let player = 0;
+
+    for (const card of deck) {
+      players[player].hand.push(card);
+
+      player = player === 3 ? 0 : ++player;
+    }
+
+    return players.reduce(
+      (playersObj, player) => ({
+        ...playersObj,
+        [`player${player.number}`]: {
+          ...player,
+          hand: player.hand.sort(sortHand),
+        },
+      }),
+      {}
+    );
+  }
+
+  /**
+   * Extracts the rank/suit from a card string
+   * @param {String} card
+   */
+  getRankAndSuit(card) {
+    const rank = card.substring(0, card.length - 1);
+    const suit = card.substring(card.length - 1);
+
+    return { rank, suit };
+  }
+
+  /**
+   * Sorts cards in a player's hand
+   * @param {String} a
+   * @param {String} b
+   */
+  sortHand(a, b) {
+    const { rank: rankA, suit: suitA } = this.getRankAndSuit(a);
+    const { rank: rankB, suit: suitB } = this.getRankAndSuit(b);
+
+    if (suitHierarchy[suitA] === suitHierarchy[suitB])
+      return rankHierarchy[rankA] > rankHierarchy[rankB] ? 1 : -1;
+
+    return suitHierarchy[suitA] > suitHierarchy[suitB] ? 1 : -1;
+  }
+}
+
+/** A standard 52-card deck */
+class Deck {
+  static ranks = [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "J",
+    "Q",
+    "K",
+    "A",
+  ];
+  static suits = ["C", "D", "S", "H"];
+  static rankHierarchy = {
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+    7: 6,
+    8: 7,
+    9: 8,
+    10: 9,
+    J: 10,
+    Q: 11,
+    K: 12,
+    A: 13,
+  };
+  static suitHierarchy = {
+    C: 1,
+    D: 2,
+    S: 3,
+    H: 4,
+  };
+
+  /** Creates an instance of `Deck` */
+  constructor() {
+    /** @type {String[]} */
+    this.cards = this.buildDeck();
+  }
+
+  /** Generates a new `Deck` */
+  buildDeck() {
+    const deck = [];
+
+    for (const rank of Deck.ranks) {
+      for (const suit of Deck.suits) {
+        deck.push(rank + suit);
+      }
+    }
+    console.log(deck);
+
+    return this.shuffle(deck);
+  }
+
+  /**
+   * Shuffles the deck
+   * @param {String[]} deck
+   */
+  shuffle(deck) {
+    const newDeck = deck.slice(); // Create a copy of the deck
+    for (let i = newDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+    }
+    return newDeck;
+  }
+}
+
+/** A player in the game */
+class Player {
+  /**
+   * Creates an instance of `Player`
+   * @param {Number} number
+   * @param {Element} displayEl
+   * @param {Element?} handEl
+   */
+  constructor(number, displayEl, handEl = null) {
+    /** @type {Number} */
+    this.number = number;
+    /** @type {Number} */
+    this.score = 0;
+    /** @type {String[]} */
+    this.hand = [];
+    /** @type {Boolean} */
+    this.loser = false;
+    /** @type {Element} */
+    this.displayEl = displayEl;
+    /** @type {Element?} */
+    this.handEl = handEl;
+  }
+
+  /**
+   * Pick 3 from a hand to pass
+   * @returns {String[][]}
+   */
+  pickThree() {
+    let updatedHand = [...this.hand];
+    let picks = [];
+
+    return new Promise((resolve) => {
+      if (this.number === 1) {
+        /**
+         * Handles click event for selecting cards
+         * @param {Element} playerCard
+         */
+        const selectHandler = (playerCard) => () => {
+          // Get the index of the card in current picks
+          let pickIndex = picks.findIndex(
+            (card) => card === playerCard.innerHTML
+          );
+
+          if (pickIndex >= 0) {
+            // If it's in picks, move it back to the hand
+            const [pick] = picks.splice(pickIndex, 1);
+            updatedHand.push(pick);
+            playerCard.classList.remove("selected");
+          } else {
+            // Otherwise, move it from hand to picks
+            const handIndex = updatedHand.findIndex(
+              (card) => card === playerCard.innerHTML
+            );
+            const [pick] = updatedHand.splice(handIndex, 1);
+            picks.push(pick);
+            playerCard.classList.add("selected");
+          }
+
+          if (picks.length === 3) {
+            // Display confirmation button if all 3 picks have been made
+            confirmButton.classList.add("show");
+          } else {
+            // Otherwise, hide the button
+            confirmButton.classList.remove("show");
+          }
+        };
+
+        // Add event listeners to all player 1 cards
+        const playerCards = document.querySelectorAll(".player-card");
+        playerCards.forEach((playerCard) => {
+          playerCard.addEventListener("click", selectHandler(playerCard));
+        });
+
+        confirmButton.addEventListener("click", () => {
+          // If the confirm button is clicked:
+          // - Hide the button
+          // - Remove card event listeners
+          // - Resolve promise with picks and updated hand
+          confirmButton.classList.remove("show");
+          playerCards.forEach((playerCard) => {
+            playerCard.classList.remove("selected");
+            playerCard.removeEventListener("click", selectHandler(playerCard));
+          });
+          resolve([picks, updatedHand]);
+        });
+      }
+
+      for (let x = 1; x <= 3; x++) {
+        const index = updatedHand.findIndex((card) => {
+          const { rank, suit } = getRankAndSuit(card);
+          return (
+            (rank > rankHierarchy[10] && suit >= suitHierarchy.S) ||
+            rank > rankHierarchy[10] ||
+            rank > rankHierarchy[6] ||
+            true
+          );
+        });
+
+        const [pick] = updatedHand.splice(index, 1);
+        picks.push(pick);
+      }
+
+      return [picks, updatedHand];
+    });
+  }
+
+  /**
+   * Visually updates Player 1's hand
+   * @param {String[]} hand
+   */
+  updatePlayerHand() {
+    if (!this.handEl) return;
+
+    for (let card of this.hand) {
+      let { suit } = getRankAndSuit(card);
+      const span = document.createElement("span");
+      span.classList.add("player-card");
+      if (suit === "D" || suit === "H") span.classList.add("red");
+      span.innerHTML = card;
+      this.handEl.appendChild(span);
+    }
+  }
+}
+
+/// ADDED TO DECK
 const ranks = [
   "2",
   "3",
@@ -32,7 +303,9 @@ const ranks = [
   "K",
   "A",
 ];
+/// ADDED TO DECK
 const suits = ["C", "D", "S", "H"];
+/// ADDED TO DECK
 const rankHierarchy = {
   2: 1,
   3: 2,
@@ -48,6 +321,7 @@ const rankHierarchy = {
   K: 12,
   A: 13,
 };
+/// ADDED TO DECK
 const suitHierarchy = {
   C: 1,
   D: 2,
@@ -55,6 +329,7 @@ const suitHierarchy = {
   H: 4,
 };
 
+/// ADDED TO DECK
 /** Generates a new deck */
 const buildDeck = () => {
   const deck = [];
@@ -69,6 +344,7 @@ const buildDeck = () => {
   return shuffle(deck);
 };
 
+/// ADDED TO DECK
 /**
  * Shuffles the deck
  * @param {String[]} deck
@@ -82,8 +358,9 @@ const shuffle = (deck) => {
   return newDeck;
 };
 
+/// ADDED TO GAME
 /**
- *
+ * Deals the deck of cards to the players
  * @param {String[]} deck
  * @returns {Player[]}
  */
@@ -108,6 +385,7 @@ const deal = (deck) => {
   }));
 };
 
+/// ADDED TO GAME
 /**
  * Extracts the rank/suit from a card string
  * @param {String} card
@@ -119,6 +397,7 @@ const getRankAndSuit = (card) => {
   return { rank, suit };
 };
 
+/// ADDED TO GAME
 /**
  * Sorts cards in a player's hand
  * @param {String} a
@@ -134,6 +413,7 @@ const sortHand = (a, b) => {
   return suitHierarchy[suitA] > suitHierarchy[suitB] ? 1 : -1;
 };
 
+/// ADDED TO PLAYER
 /**
  * Pick 3 from a hand to pass
  * @param {String[]} hand
@@ -159,6 +439,7 @@ const pickThree = (hand) => {
   return [picks, updatedHand];
 };
 
+/// ADDED TO PLAYER
 /**
  * Pick 3 from a hand to pass (for human player)
  * @param {String[]} hand
@@ -214,7 +495,7 @@ const pickThreePlayer1 = (hand) => {
       // - Resolve promise with picks and updated hand
       confirmButton.classList.remove("show");
       playerCards.forEach((playerCard) => {
-        playerCard.classList.remove("slected");
+        playerCard.classList.remove("selected");
         playerCard.removeEventListener("click", selectHandler(playerCard));
       });
       resolve([picks, updatedHand]);
